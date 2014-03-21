@@ -1,6 +1,12 @@
 //libx  by sincoder
 //提供和windows api 相同功能相同参数的 api 来开发 linux 程序
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#include <dirent.h>     /* Defines DT_* constants */
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <dlfcn.h>
 #include <stdarg.h> //for va_list
 #include <sys/socket.h>
@@ -18,6 +24,7 @@
 #include <net/if.h>
 #include <linux/rtnetlink.h>
 #include <signal.h>
+#include <sys/syscall.h>
 
 #ifndef FALSE
 #define FALSE               0
@@ -267,6 +274,7 @@ typedef unsigned long ULONG_PTR, *PULONG_PTR;
 #define _Out_opt_
 #define _Inout_opt_
 #define _Out_
+#define _Inout_
 
 #ifdef _DEBUG
 #define dbg_msg(fmt,...) do{\
@@ -275,6 +283,8 @@ typedef unsigned long ULONG_PTR, *PULONG_PTR;
 #else
 #define dbg_msg(fmt,...)
 #endif
+
+#define MAX_PATH 260
 
 typedef struct _OVERLAPPED
 {
@@ -298,6 +308,30 @@ typedef struct _SECURITY_ATTRIBUTES
     LPVOID lpSecurityDescriptor;
     BOOL   bInheritHandle;
 } SECURITY_ATTRIBUTES, *PSECURITY_ATTRIBUTES, *LPSECURITY_ATTRIBUTES;
+
+typedef struct _FILETIME {
+  DWORD dwLowDateTime;
+  DWORD dwHighDateTime;
+} FILETIME, *PFILETIME;
+
+typedef struct _WIN32_FIND_DATA {
+  DWORD    dwFileAttributes;
+  FILETIME ftCreationTime;
+  FILETIME ftLastAccessTime;
+  FILETIME ftLastWriteTime;
+  DWORD    nFileSizeHigh;
+  DWORD    nFileSizeLow;
+  DWORD    dwReserved0;
+  DWORD    dwReserved1;
+  CHAR    cFileName[MAX_PATH];
+  CHAR    cAlternateFileName[14];
+} WIN32_FIND_DATA, *PWIN32_FIND_DATA, *LPWIN32_FIND_DATA;
+
+typedef struct _FIND_FILE_HANDLE
+{
+	int fp; // 文件夹的 fd
+	unsigned int idx; //文件的编号
+}FIND_FILE_HANDLE;
 
 VOID Sleep(
     _In_  DWORD dwMilliseconds
@@ -344,4 +378,33 @@ BOOL ReadFile(
 
 BOOL DeleteFile(
   _In_  LPCTSTR lpFileName
+);
+
+HANDLE FindFirstFile(
+  _In_   LPCTSTR lpFileName,
+  _Out_  LPWIN32_FIND_DATA lpFindFileData
+);
+
+BOOL FindNextFile(
+  _In_   HANDLE hFindFile,
+  _Out_  LPWIN32_FIND_DATA lpFindFileData
+);
+
+BOOL FindClose(
+  _Inout_  HANDLE hFindFile
+);
+
+DWORD GetFileAttributes(
+  _In_  LPCTSTR lpFileName
+);
+
+BOOL CopyFile(
+  _In_  LPCTSTR lpExistingFileName,
+  _In_  LPCTSTR lpNewFileName,
+  _In_  BOOL bFailIfExists
+);
+
+DWORD GetFileSize(
+  _In_       HANDLE hFile,
+  _Out_opt_  LPDWORD lpFileSizeHigh
 );

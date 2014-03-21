@@ -1,5 +1,53 @@
 #include "windows.h"
 
+
+/*
+字符串连接函数
+@d 目标字符串
+@s 源字符串
+@n 目标最大可以保存的字符串数量 包括末尾的 \0
+@return 返回连接后的字符串
+*/
+static CHAR *libx_strncat(CHAR *d, CHAR *s, int n)
+{
+    int i = 0;
+    for (i = strlen(d); i < n - 1 && *s; i++, s++)
+    {
+        d[i] = *s;
+    }
+    d[i] = 0;
+    return d;
+}
+
+
+/*
+字符串复制函数
+@d 目标内存
+@s 源字符串
+@n 目标内存中可以存放的最多字符数量 保护末尾的 \0
+@return 返回 d
+*/
+static CHAR *libx_strncpy(CHAR *d, const CHAR *s, int n)
+{
+    int i = 0;
+    for (i = 0; i < n - 1 && *s; i++, s++)
+    {
+        d[i] = *s;
+    }
+    d[i] = 0;
+    return d;
+}
+
+
+/*
+via /proc/self/fd/[fd] get file name info
+*/
+static char *libx_GetFileNameFromFd(int fd)
+{
+    readlinkat(int __fd, const char *restrict __path, char *restrict __buf, size_t __len)
+}
+
+
 VOID Sleep(
     _In_  DWORD dwMilliseconds
 )
@@ -117,4 +165,178 @@ BOOL DeleteFile(
 )
 {
     return 0 == unlinkat(AT_FDCWD, lpFileName, 0);
+}
+
+HANDLE FindFirstFile(
+    _In_   LPCTSTR lpFileName,
+    _Out_  LPWIN32_FIND_DATA lpFindFileData
+)
+{
+    int DirFp = -1;
+    if (!lpFileName)
+        return INVALID_HANDLE_VALUE;
+    DirFp = openat(AT_FDCWD, lpFileName, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (DirFp)
+    {
+        if (lpFindFileData)
+        {
+            FIND_FILE_HANDLE *pHandle = (FIND_FILE_HANDLE *)malloc(sizeof(FIND_FILE_HANDLE));
+            if (pHandle)
+            {
+                memset(lpFindFileData, 0, sizeof(WIN32_FIND_DATA));
+                strcpy(lpFindFileData->cFileName, "."); // fake first file name
+                lpFindFileData->dwFileAttributes = FILE_ATTRIBUTE_DIRECTORY;
+
+                pHandle->fp = DirFp;
+                pHandle->idx = 0;
+                return (HANDLE)pHandle;
+            }
+        }
+        close(DirFp);
+    }
+    return INVALID_HANDLE_VALUE;
+}
+
+struct linux_dirent
+{
+    long           d_ino;
+    off_t          d_off;
+    unsigned short d_reclen;
+    char           d_name[];
+};
+
+BOOL FindNextFile(
+    _In_   HANDLE hFindFile,
+    _Out_  LPWIN32_FIND_DATA lpFindFileData
+)
+{
+    FIND_FILE_HANDLE *pHandle = (FIND_FILE_HANDLE *)hFindFile;
+    if (pHandle && lpFindFileData)
+    {
+        struct linux_dirent *d;
+        char buff[1024];
+        //int i = 0;
+        int ok = 0;
+        while ( 1 != ok )
+        {
+            int bpos, nread;
+            char d_type;
+            int inputLen = 1;
+            // get one file
+            while (1)
+            {
+                nread = syscall(SYS_getdents, pHandle->fp, buff, inputLen);
+                if (nread == -1 )
+                {
+                    if (errno == EINVAL)
+                    {
+                        inputLen ++;
+                        continue;
+                    }
+                }
+                break;
+            }
+
+            if (nread == -1)
+            {
+                dbg_msg("getdent error,error no : %d ", errno);
+                break;
+            }
+            if (nread == 0)
+                break;
+
+            for (bpos = 0; bpos < nread;)
+            {
+                d = (struct linux_dirent *) (buff + bpos);
+                if (strcmp(d->d_name, ".") == 0 )
+                {
+                    pHandle->idx ++;// skip .
+                }
+                else
+                {
+                    d_type = *(buff + bpos + d->d_reclen - 1);
+                    lpFindFileData->dwFileAttributes =
+                        (d_type == DT_DIR ? FILE_ATTRIBUTE_DIRECTORY : FILE_ATTRIBUTE_NORMAL);
+                    libx_strncpy(lpFindFileData->cFileName,
+                                 d->d_name,
+                                 sizeof(lpFindFileData->cFileName));
+                    ok = 1;
+                    break;
+                }
+                bpos += d->d_reclen;
+            }
+        }
+
+        if (ok)
+        {
+            pHandle->idx ++;
+            return TRUE;
+        }
+    }
+    return FALSE;
+}
+
+BOOL FindClose(
+    _Inout_  HANDLE hFindFile
+)
+{
+    if (hFindFile)
+    {
+        FIND_FILE_HANDLE *p = (FIND_FILE_HANDLE *)hFindFile;
+        close(p->fp);
+        free(p);
+        return TRUE;
+    }
+    return FALSE;
+}
+
+DWORD GetFileAttributes(
+    _In_  LPCTSTR lpFileName
+)
+{
+    DWORD ret = INVALID_FILE_ATTRIBUTES;
+    struct stat sb;
+    if (stat(lpFileName, &sb) == -1)
+    {
+        switch (sb.st_mode & S_IFMT)
+        {
+        case S_IFBLK:
+            break;
+        case S_IFCHR:
+            break;
+        case S_IFDIR:
+            ret = FILE_ATTRIBUTE_DIRECTORY;
+            break;
+        case S_IFIFO:
+            break;
+        case S_IFLNK:
+            break;
+        case S_IFREG:
+            ret = FILE_ATTRIBUTE_NORMAL ;
+            break;
+        case S_IFSOCK:
+            break;
+        default:
+            break;
+        }
+    }
+    return ret;
+}
+
+BOOL CopyFile(
+  _In_  LPCTSTR lpExistingFileName,
+  _In_  LPCTSTR lpNewFileName,
+  _In_  BOOL bFailIfExists
+)
+{
+    return FALSE;
+}
+
+DWORD GetFileSize(
+  _In_       HANDLE hFile,
+  _Out_opt_  LPDWORD lpFileSizeHigh
+)
+{
+    int fd = (int)hFile;
+    fstatat(fd, const char *restrict __file, struct stat *restrict __buf, int __flag)
 }
