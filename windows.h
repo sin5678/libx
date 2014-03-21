@@ -1,5 +1,6 @@
 //libx  by sincoder
 //提供和windows api 相同功能相同参数的 api 来开发 linux 程序
+#pragma once
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
@@ -326,85 +327,3 @@ typedef struct _WIN32_FIND_DATA {
   CHAR    cFileName[MAX_PATH];
   CHAR    cAlternateFileName[14];
 } WIN32_FIND_DATA, *PWIN32_FIND_DATA, *LPWIN32_FIND_DATA;
-
-typedef struct _FIND_FILE_HANDLE
-{
-	int fp; // 文件夹的 fd
-	unsigned int idx; //文件的编号
-}FIND_FILE_HANDLE;
-
-VOID Sleep(
-    _In_  DWORD dwMilliseconds
-);
-
-/*
-不支持的参数:
-    lpSecurityAttributes
-    hTemplateFile
-    dwShareMode
-*/
-HANDLE CreateFile(
-    _In_      LPCTSTR lpFileName,
-    _In_      DWORD dwDesiredAccess,
-    _In_      DWORD dwShareMode,
-    _In_opt_  LPSECURITY_ATTRIBUTES lpSecurityAttributes,
-    _In_      DWORD dwCreationDisposition,
-    _In_      DWORD dwFlagsAndAttributes,
-    _In_opt_  HANDLE hTemplateFile
-);
-
-/*
-unsupport lparam:
-    lpOverlapped
-*/
-BOOL WriteFile(
-    _In_         HANDLE hFile,
-    _In_         LPCVOID lpBuffer,
-    _In_         DWORD nNumberOfBytesToWrite,
-    _Out_opt_    LPDWORD lpNumberOfBytesWritten,
-    _Inout_opt_  LPOVERLAPPED lpOverlapped
-);
-
-/*
-
-*/
-BOOL ReadFile(
-    _In_         HANDLE hFile,
-    _Out_        LPVOID lpBuffer,
-    _In_         DWORD nNumberOfBytesToRead,
-    _Out_opt_    LPDWORD lpNumberOfBytesRead,
-    _Inout_opt_  LPOVERLAPPED lpOverlapped
-);
-
-BOOL DeleteFile(
-  _In_  LPCTSTR lpFileName
-);
-
-HANDLE FindFirstFile(
-  _In_   LPCTSTR lpFileName,
-  _Out_  LPWIN32_FIND_DATA lpFindFileData
-);
-
-BOOL FindNextFile(
-  _In_   HANDLE hFindFile,
-  _Out_  LPWIN32_FIND_DATA lpFindFileData
-);
-
-BOOL FindClose(
-  _Inout_  HANDLE hFindFile
-);
-
-DWORD GetFileAttributes(
-  _In_  LPCTSTR lpFileName
-);
-
-BOOL CopyFile(
-  _In_  LPCTSTR lpExistingFileName,
-  _In_  LPCTSTR lpNewFileName,
-  _In_  BOOL bFailIfExists
-);
-
-DWORD GetFileSize(
-  _In_       HANDLE hFile,
-  _Out_opt_  LPDWORD lpFileSizeHigh
-);

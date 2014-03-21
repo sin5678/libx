@@ -1,51 +1,13 @@
 #include "windows.h"
+#include "help.h"
+#include "kernel32.h"
 
 
-/*
-字符串连接函数
-@d 目标字符串
-@s 源字符串
-@n 目标最大可以保存的字符串数量 包括末尾的 \0
-@return 返回连接后的字符串
-*/
-static CHAR *libx_strncat(CHAR *d, CHAR *s, int n)
+typedef struct _FIND_FILE_HANDLE
 {
-    int i = 0;
-    for (i = strlen(d); i < n - 1 && *s; i++, s++)
-    {
-        d[i] = *s;
-    }
-    d[i] = 0;
-    return d;
-}
-
-
-/*
-字符串复制函数
-@d 目标内存
-@s 源字符串
-@n 目标内存中可以存放的最多字符数量 保护末尾的 \0
-@return 返回 d
-*/
-static CHAR *libx_strncpy(CHAR *d, const CHAR *s, int n)
-{
-    int i = 0;
-    for (i = 0; i < n - 1 && *s; i++, s++)
-    {
-        d[i] = *s;
-    }
-    d[i] = 0;
-    return d;
-}
-
-
-/*
-via /proc/self/fd/[fd] get file name info
-*/
-static char *libx_GetFileNameFromFd(int fd)
-{
-    readlinkat(int __fd, const char *restrict __path, char *restrict __buf, size_t __len)
-}
+    int fp; // 文件夹的 fd
+    unsigned int idx; //文件的编号
+}FIND_FILE_HANDLE;
 
 
 VOID Sleep(
@@ -324,19 +286,36 @@ DWORD GetFileAttributes(
 }
 
 BOOL CopyFile(
-  _In_  LPCTSTR lpExistingFileName,
-  _In_  LPCTSTR lpNewFileName,
-  _In_  BOOL bFailIfExists
+    _In_  LPCTSTR lpExistingFileName,
+    _In_  LPCTSTR lpNewFileName,
+    _In_  BOOL bFailIfExists
 )
 {
     return FALSE;
 }
 
 DWORD GetFileSize(
-  _In_       HANDLE hFile,
-  _Out_opt_  LPDWORD lpFileSizeHigh
+    _In_       HANDLE hFile,
+    _Out_opt_  LPDWORD lpFileSizeHigh
 )
 {
+    DWORD lowPart = 0;
     int fd = (int)hFile;
-    fstatat(fd, const char *restrict __file, struct stat *restrict __buf, int __flag)
+    char *fileName = libx_GetFileNameFromFd(fd);
+    if(fileName)
+    {
+        struct stat sb;
+        if (stat(fileName, &sb) != -1) 
+        {
+            FILETIME ft;
+            memcpy(&ft, &sb.st_size, sizeof(ft));
+            if(lpFileSizeHigh)
+            {
+                *lpFileSizeHigh = ft.dwHighDateTime;
+                lowPart = ft.dwLowDateTime;
+            }
+        }
+        free(fileName);
+    }
+    return lowPart;
 }
