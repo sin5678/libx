@@ -7,7 +7,7 @@ typedef struct _FIND_FILE_HANDLE
 {
     int fp; // 文件夹的 fd
     unsigned int idx; //文件的编号
-}FIND_FILE_HANDLE;
+} FIND_FILE_HANDLE;
 
 
 VOID Sleep(
@@ -19,7 +19,6 @@ VOID Sleep(
     slptm.tv_nsec = 1000 * 1000 * (dwMilliseconds - (dwMilliseconds / 1000) * 1000);      //1000 ns = 1 us
     if (nanosleep(&slptm, NULL) != -1)
     {
-
     }
     else
     {
@@ -302,14 +301,14 @@ DWORD GetFileSize(
     DWORD lowPart = 0;
     int fd = (int)hFile;
     char *fileName = libx_GetFileNameFromFd(fd);
-    if(fileName)
+    if (fileName)
     {
         struct stat sb;
-        if (stat(fileName, &sb) != -1) 
+        if (stat(fileName, &sb) != -1)
         {
             FILETIME ft;
             memcpy(&ft, &sb.st_size, sizeof(ft));
-            if(lpFileSizeHigh)
+            if (lpFileSizeHigh)
             {
                 *lpFileSizeHigh = ft.dwHighDateTime;
                 lowPart = ft.dwLowDateTime;
@@ -318,4 +317,116 @@ DWORD GetFileSize(
         free(fileName);
     }
     return lowPart;
+}
+
+BOOL CloseHandle(
+    _In_  HANDLE hObject
+)
+{
+    int fd = (int)hObject;
+    return 0 == close(fd);
+}
+
+BOOL TerminateProcess(
+    _In_  HANDLE hProcess,
+    _In_  UINT uExitCode
+)
+{
+    int pid = (int)hProcess;
+    if (pid > 0)
+    {
+        return 0 == kill(pid, SIGTERM);
+    }
+    return -1;
+}
+
+
+DWORD GetProcessId(
+    _In_  HANDLE Process
+)
+{
+    return (DWORD)Process;
+}
+
+HANDLE OpenProcess(
+    _In_  DWORD dwDesiredAccess,
+    _In_  BOOL bInheritHandle,
+    _In_  DWORD dwProcessId
+)
+{
+    //try open it
+    int fd = 0;
+    char *ProcessExe = libx_GetFormatString("/proc/%d/exe", dwProcessId);
+    if (ProcessExe)
+    {
+        char *ProcessName = libx_GetLinkName(ProcessExe);
+        if (ProcessName)
+        {
+            fd = dwProcessId;
+            free(ProcessName);
+        }
+        free(ProcessExe);
+    }
+    return (HANDLE)fd;
+}
+
+DWORD GetLastError(void)
+{
+    return errno;
+}
+
+void SetLastError(
+    _In_  DWORD dwErrCode
+)
+{
+    errno = dwErrCode;
+}
+
+VOID ExitProcess(
+    _In_  UINT uExitCode
+)
+{
+    syscall(SYS_exit_group, uExitCode);
+}
+
+BOOL CreateProcess(
+    _In_opt_     LPCTSTR lpApplicationName,
+    _Inout_opt_  LPTSTR lpCommandLine,
+    _In_opt_     LPSECURITY_ATTRIBUTES lpProcessAttributes,
+    _In_opt_     LPSECURITY_ATTRIBUTES lpThreadAttributes,
+    _In_         BOOL bInheritHandles,
+    _In_         DWORD dwCreationFlags,
+    _In_opt_     LPVOID lpEnvironment,
+    _In_opt_     LPCTSTR lpCurrentDirectory,
+    _In_         LPSTARTUPINFO lpStartupInfo,
+    _Out_        LPPROCESS_INFORMATION lpProcessInformation
+)
+{
+    /* This combination is illegal (see MSDN) */
+    if ((dwCreationFlags & (DETACHED_PROCESS | CREATE_NEW_CONSOLE)) ==
+            (DETACHED_PROCESS | CREATE_NEW_CONSOLE))
+    {
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    /* Another illegal combo */
+    if ((dwCreationFlags & (CREATE_SEPARATE_WOW_VDM | CREATE_SHARED_WOW_VDM)) ==
+            (CREATE_SEPARATE_WOW_VDM | CREATE_SHARED_WOW_VDM))
+    {
+        dbg_msg("Invalid flag combo used\n");
+        SetLastError(ERROR_INVALID_PARAMETER);
+        return FALSE;
+    }
+
+    if (lpCurrentDirectory)
+    {
+        if ((GetFileAttributes(lpCurrentDirectory) == INVALID_FILE_ATTRIBUTES) ||
+                !(GetFileAttributes(lpCurrentDirectory) & FILE_ATTRIBUTE_DIRECTORY))
+        {
+            return FALSE;
+        }
+    }
+
+    
 }

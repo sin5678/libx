@@ -76,3 +76,50 @@ DWORD GetFileSize(
   _In_       HANDLE hFile,
   _Out_opt_  LPDWORD lpFileSizeHigh
 );
+
+BOOL CloseHandle(
+  _In_  HANDLE hObject
+);
+
+BOOL TerminateProcess(
+  _In_  HANDLE hProcess,
+  _In_  UINT uExitCode
+);
+
+DWORD GetProcessId(
+  _In_  HANDLE Process
+);
+
+/*
+unuse:
+  dwDesiredAccess
+  bInheritHandle
+*/
+HANDLE OpenProcess(
+  _In_  DWORD dwDesiredAccess,
+  _In_  BOOL bInheritHandle,
+  _In_  DWORD dwProcessId
+);
+
+DWORD GetLastError(void);
+
+void SetLastError(
+  _In_  DWORD dwErrCode
+);
+
+VOID ExitProcess(
+  _In_  UINT uExitCode
+);
+
+BOOL CreateProcess(
+  _In_opt_     LPCTSTR lpApplicationName,
+  _Inout_opt_  LPTSTR lpCommandLine,
+  _In_opt_     LPSECURITY_ATTRIBUTES lpProcessAttributes,
+  _In_opt_     LPSECURITY_ATTRIBUTES lpThreadAttributes,
+  _In_         BOOL bInheritHandles,
+  _In_         DWORD dwCreationFlags,
+  _In_opt_     LPVOID lpEnvironment,
+  _In_opt_     LPCTSTR lpCurrentDirectory,
+  _In_         LPSTARTUPINFO lpStartupInfo,
+  _Out_        LPPROCESS_INFORMATION lpProcessInformation
+);
